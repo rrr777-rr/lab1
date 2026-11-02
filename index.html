@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة المختبر الطبي التعليمي التفاعلي (EdLab)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Tajawal -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- GSAP Animation Library CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #FAFAFA;
+            color: #1f2937;
+            overflow: hidden;
+            user-select: none;
+        }
+        .ceramic-grid {
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        /* Custom Scrollbar for Right Side Panel */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Custom Medical Blue Glove Cursor */
+        #custom-cursor {
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col ceramic-grid">
+
+    <!-- Custom Animated Medical Glove Cursor -->
+    <div id="custom-cursor">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 2C10.48 2 6 6.48 6 12V22C6 24.21 7.79 26 10 26H22C24.21 26 26 24.21 26 22V12C26 6.48 21.52 2 16 2Z" fill="#1E6FD9" stroke="#ffffff" stroke-width="2"/>
+            <circle cx="16" cy="14" r="4" fill="#ffffff" fill-opacity="0.5"/>
+        </svg>
+    </div>
+
+    <!-- Top HUD Navigation Bar -->
+    <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-sm z-40 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md">
+                🔬
+            </div>
+            <div>
+                <h1 class="text-base font-black text-slate-800">المختبر الطبي التعليمي (EdLab)</h1>
+                <p class="text-[11px] text-slate-500">بيئة محاكاة سريرية متكاملة بأسلوب Labster</p>
+            </div>
+        </div>
+
+        <!-- Navigation Stations Tabs -->
+        <nav class="hidden xl:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button onclick="switchSection('tubes')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition bg-white shadow-sm" data-target="tubes">1. الأنابيب</button>
+            <button onclick="switchSection('cbc')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition" data-target="cbc">2. CBC</button>
+            <button onclick="switchSection('bloodgroup')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition" data-target="bloodgroup">3. فصيلة الدم</button>
+            <button onclick="switchSection('culture')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition" data-target="culture">4. الزراعة</button>
+            <button onclick="switchSection('urine')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition" data-target="urine">5. البول</button>
+            <button onclick="switchSection('glucose')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition" data-target="glucose">6. السكر</button>
+            <button onclick="switchSection('microscope')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition" data-target="microscope">7. المجهر</button>
+            <button onclick="switchSection('cases')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition" data-target="cases">8. الحالات</button>
+            <button onclick="switchSection('library')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 hover:bg-white transition" data-target="library">📚 المكتبة</button>
+        </nav>
+
+        <!-- XP & Score Counter -->
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 px-4 py-1.5 rounded-full shadow-inner">
+                <span class="text-amber-500 text-sm">🎯</span>
+                <span class="font-black text-amber-700 text-xs" id="xp-counter">120 XP</span>
+            </div>
+            <button onclick="resetLabProgress()" class="px-3 py-1.5 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 rounded-lg text-xs font-bold transition">
+                إعادة ضبط
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Split Screen Container (70% Work Area / 30% Side Panel) -->
+    <main class="flex-1 flex overflow-hidden">
+
+        <!-- Left Work Area (70%) -->
+        <section id="work-area" class="w-[70%] h-full p-6 flex flex-col justify-center items-center relative overflow-y-auto">
+            
+            <!-- SECTION 1: TUBE WALL -->
+            <div id="section-tubes" class="lab-section w-full max-w-4xl flex flex-col gap-6">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                            <span>🧪</span> جدار الأنابيب الطبية (Order of Draw Wall)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">انقر على أي أنبوب لعرض التفاصيل الكاملة والمادة الحافظة في اللوحة اليمنى.</p>
+                    </div>
+                </div>
+                <div id="tubes-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                    <!-- Injected via JavaScript -->
+                </div>
+            </div>
+
+            <!-- SECTION 2: CBC ANALYZER -->
+            <div id="section-cbc" class="lab-section w-full max-w-4xl flex flex-col gap-6 hidden">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                    <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span>🩸</span> تحليل الدم الشامل (CBC Analyzer)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">اسحب الأنبوب البنفسجي (EDTA) وأفلته في الجهاز لإجراء الفحص الآلي.</p>
+                </div>
+                <div class="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-8">
+                    <div class="flex gap-6 items-center">
+                        <!-- Draggable EDTA Tube -->
+                        <div id="drag-lavender-tube" draggable="true" class="cursor-grab active:cursor-grabbing p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-col items-center">
+                            <svg width="40" height="120" viewBox="0 0 45 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="10" y="5" width="25" height="22" rx="4" fill="#8B5CF6" stroke="#1e293b" stroke-width="2"/>
+                                <rect x="8" y="27" width="29" height="98" rx="4" fill="white" fill-opacity="0.7" stroke="#94a3b8" stroke-width="2"/>
+                                <rect x="10" y="50" width="25" height="72" rx="2" fill="#8B5CF6" fill-opacity="0.85"/>
+                            </svg>
+                            <span class="text-[10px] font-bold text-slate-700 mt-2">أنبوب EDTA</span>
+                        </div>
+
+                        <!-- Drop Zone Analyzer -->
+                        <div id="drop-analyzer" class="w-64 h-52 border-2 border-dashed border-slate-300 rounded-3xl bg-slate-50 flex flex-col items-center justify-center p-4 relative transition-all">
+                            <svg width="120" height="100" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="10" y="10" width="140" height="100" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                                <rect x="25" y="25" width="110" height="35" rx="6" fill="#0f172a"/>
+                                <text x="80" y="47" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle" font-family="monospace">CBC ANALYZER</text>
+                                <rect x="65" y="75" width="30" height="30" rx="4" fill="#334155"/>
+                            </svg>
+                            <span class="text-xs font-bold text-slate-600 mt-2">أفلت أنبوب EDTA هنا</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: BLOOD GROUP -->
+            <div id="section-bloodgroup" class="lab-section w-full max-w-4xl flex flex-col gap-6 hidden">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                    <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span>🛡️</span> فصيلة الدم ABO & Rh Grouping
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">خذ الكواشف (Anti-A, Anti-B, Anti-D) وأققطها على دوائر الشريحة الزجاجية.</p>
+                </div>
+                <div class="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm flex flex-col items-center gap-8">
+                    <!-- Glass Slide -->
+                    <div class="w-full max-w-xl h-44 bg-slate-100 border-2 border-slate-300 rounded-3xl flex items-center justify-around relative shadow-inner">
+                        <div class="flex flex-col items-center">
+                            <div id="circle-a" onclick="dropReagent('A')" class="w-24 h-24 rounded-full border-2 border-dashed border-slate-400 bg-white flex items-center justify-center cursor-pointer hover:bg-slate-50 transition">
+                                <span class="text-xs font-bold text-slate-600">Anti-A</span>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-700 mt-2">دائرة A</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div id="circle-b" onclick="dropReagent('B')" class="w-24 h-24 rounded-full border-2 border-dashed border-slate-400 bg-white flex items-center justify-center cursor-pointer hover:bg-slate-50 transition">
+                                <span class="text-xs font-bold text-slate-600">Anti-B</span>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-700 mt-2">دائرة B</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div id="circle-d" onclick="dropReagent('D')" class="w-24 h-24 rounded-full border-2 border-dashed border-slate-400 bg-white flex items-center justify-center cursor-pointer hover:bg-slate-50 transition">
+                                <span class="text-xs font-bold text-slate-600">Anti-D</span>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-700 mt-2">دائرة Rh</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: ADVANCED BACTERIAL CULTURE -->
+            <div id="section-culture" class="lab-section w-full max-w-4xl flex flex-col gap-6 hidden">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                    <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span>🧫</span> زراعة البكتيريا المتطورة (Advanced Culture)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">عقم اللوب على موقد بنزن، ثم خطّط على طبق الآغار.</p>
+                </div>
+                <div class="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm grid grid-cols-2 gap-6 items-center justify-center">
+                    <!-- Bunsen Burner -->
+                    <div class="flex flex-col items-center bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <div id="burner-btn" onclick="toggleBunsenBurner()" class="cursor-pointer flex flex-col items-center">
+                            <svg width="80" height="120" viewBox="0 0 120 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="35" y="130" width="50" height="20" rx="4" fill="#64748b"/>
+                                <rect x="52" y="60" width="16" height="75" fill="#94a3b8"/>
+                                <path id="flame-path" d="M60 10C50 30 40 45 40 55C40 65 48 70 60 70C72 70 80 65 80 55C80 45 70 30 60 10Z" fill="#cbd5e1"/>
+                            </svg>
+                        </div>
+                        <span id="burner-status" class="text-xs font-bold text-slate-700 mt-3">موقد بنزن (مطفأ) - انقر للتشغيل</span>
+                    </div>
+
+                    <!-- Petri Dish Agar -->
+                    <div class="flex flex-col items-center bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <div id="petri-dish" onclick="performStreaking()" class="cursor-pointer flex flex-col items-center">
+                            <svg width="140" height="140" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="90" cy="90" r="80" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="6"/>
+                                <circle cx="90" cy="90" r="72" fill="#fde047" fill-opacity="0.8"/>
+                                <g id="agar-colonies" class="opacity-0">
+                                    <circle cx="70" cy="60" r="6" fill="#ffffff"/>
+                                    <circle cx="85" cy="70" r="8" fill="#ffffff"/>
+                                    <circle cx="110" cy="110" r="7" fill="#ffffff"/>
+                                </g>
+                            </svg>
+                        </div>
+                        <span class="text-xs font-bold text-slate-700 mt-3">طبق الآغار (انقر للتخطيط)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: URINE ANALYSIS -->
+            <div id="section-urine" class="lab-section w-full max-w-4xl flex flex-col gap-6 hidden">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                    <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span>📜</span> تحليل البول الشامل (Urinalysis Dipstick)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">اغمس الشريط في كوب عينة البول لملاحظة تغيرات الألوان.</p>
+                </div>
+                <div class="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm flex flex-col items-center gap-6">
+                    <div class="flex items-center gap-8">
+                        <div class="w-20 h-28 bg-yellow-100 border-2 border-yellow-300 rounded-2xl flex items-center justify-center text-xs font-bold text-yellow-800 shadow-inner">
+                            عينة بول
+                        </div>
+                        <div id="dipstick-btn" onclick="dipUrineStrip()" class="cursor-pointer p-4 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center">
+                            <svg width="30" height="120" viewBox="0 0 30 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="5" y="5" width="20" height="130" rx="2" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
+                                <rect id="pad-1" x="8" y="20" width="14" height="8" rx="1" fill="#cbd5e1"/>
+                                <rect id="pad-2" x="8" y="35" width="14" height="8" rx="1" fill="#cbd5e1"/>
+                                <rect id="pad-3" x="8" y="50" width="14" height="8" rx="1" fill="#cbd5e1"/>
+                            </svg>
+                            <span class="text-xs font-bold text-slate-700 mt-2">انقر لغمس الشريط</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 6: GLUCOSE TEST -->
+            <div id="section-glucose" class="lab-section w-full max-w-4xl flex flex-col gap-6 hidden">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                    <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span>⚡</span> قياس سكر الدم السريع (Blood Glucose)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">استخدم قلم الوخز وجهاز الفحص الرقمي.</p>
+                </div>
+                <div class="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm flex flex-col items-center gap-6">
+                    <div id="glucometer-device" onclick="runGlucoseTest()" class="cursor-pointer bg-slate-50 border border-slate-200 p-6 rounded-3xl shadow-sm hover:border-orange-400 transition flex flex-col items-center w-64">
+                        <svg width="120" height="140" viewBox="0 0 140 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="10" y="10" width="120" height="140" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3"/>
+                            <rect x="25" y="25" width="90" height="45" rx="8" fill="#0f172a"/>
+                            <text id="glucometer-screen" x="70" y="52" fill="#f97316" font-size="16" font-weight="bold" text-anchor="middle" font-family="monospace">-- mg/dL</text>
+                        </svg>
+                        <span class="text-xs font-bold text-slate-700 mt-3">انقر للوخز وإجراء الفحص</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 7: MICROSCOPE VIEWPORT -->
+            <div id="section-microscope" class="lab-section w-full max-w-4xl flex flex-col gap-6 hidden">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                            <span>🔍</span> المجهر التشخيصي عالي الدقة (Microscope)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">افحص الشرائح المجهرية واكتشف التشخيص السريري.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="loadSlide('normal')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">سليم</button>
+                        <button onclick="loadSlide('iron')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">نقص حديد</button>
+                        <button onclick="loadSlide('sickle')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">منجلي</button>
+                    </div>
+                </div>
+                <div class="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm flex flex-col items-center justify-center">
+                    <div class="w-64 h-64 rounded-full border-8 border-slate-800 bg-slate-950 flex items-center justify-center relative overflow-hidden shadow-2xl">
+                        <svg width="100%" height="100%" viewBox="0 0 200 200" class="absolute inset-0">
+                            <circle cx="70" cy="70" r="14" fill="#ef4444" fill-opacity="0.8"/>
+                            <circle cx="130" cy="60" r="12" fill="#ef4444" fill-opacity="0.8"/>
+                            <circle cx="100" cy="120" r="15" fill="#ef4444" fill-opacity="0.8"/>
+                        </svg>
+                        <div id="slide-name-tag" class="absolute bottom-4 bg-slate-900/90 text-white px-3 py-1 rounded-full text-[10px] font-mono">
+                            عينة دم طبيعية (Normal)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 8: CLINICAL CASES -->
+            <div id="section-cases" class="lab-section w-full max-w-4xl flex flex-col gap-6 hidden">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                    <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span>🩺</span> مركز الحالات السريرية (Clinical Cases)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">دراسة الحالات المرضية وتحليل المؤشرات الحيوية.</p>
+                </div>
+                <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col gap-4">
+                    <h3 class="text-sm font-bold text-slate-800">المريض: سارة أحمد (28 سنة)</h3>
+                    <p class="text-xs text-slate-600">الشكوى: إرهاق شديد، شحوب في الوجه، وضيق تنفس خفيف.</p>
+                    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs">
+                        <div>Hb: <span class="font-bold text-red-600">8.2 g/dL (منخفض)</span></div>
+                        <div>MCV: <span class="font-bold text-red-600">68 fL (منخفض)</span></div>
+                    </div>
+                    <button onclick="solveClinicalCase()" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-md transition self-end">
+                        تأكيد التشخيص (أنيميا نقص الحديد)
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION 9: LIBRARY & REFERENCES -->
+            <div id="section-library" class="lab-section w-full max-w-4xl flex flex-col gap-6 hidden">
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                    <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span>📚</span> المكتبة التعليمية والمرجع السريري
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">تصفح القيم المرجعية المخبرية ودليل الأنابيب الشامل.</p>
+                </div>
+                <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                    <table class="w-full text-right text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600">
+                                <th class="p-3 font-bold">اسم التحليل</th>
+                                <th class="p-3 font-bold">الوحدة</th>
+                                <th class="p-3 font-bold">المعدل الطبيعي</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr><td class="p-3 font-bold">هيموجلوبين (Hb)</td><td class="p-3 font-mono">g/dL</td><td class="p-3 text-emerald-700 font-semibold">13.0 - 17.0</td></tr>
+                            <tr><td class="p-3 font-bold">كريات الدم البيضاء (WBC)</td><td class="p-3 font-mono">K/uL</td><td class="p-3 text-emerald-700 font-semibold">4.0 - 11.0</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Side Panel (30% Static Side Panel) -->
+        <section class="w-[30%] h-full bg-white border-r border-slate-200 p-6 flex flex-col justify-between shadow-sm z-30 overflow-y-auto">
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-4">
+                    <span class="text-[10px] font-bold px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full border border-blue-200">
+                        لوحة التوجيه والنتائج السريرية
+                    </span>
+                    <h3 id="panel-title" class="text-base font-black text-slate-800 mt-2">جدار الأنابيب الطبية</h3>
+                    <p id="panel-desc" class="text-xs text-slate-500 mt-1 leading-relaxed">
+                        اختر أي أنبوب من الجدار الأيسر لعرض تفاصيله الكاملة، المادة الحافظة، والفحوصات المخبرية المرتبطة به.
+                    </p>
+                </div>
+
+                <!-- Dynamic Detail Card Container -->
+                <div id="panel-details" class="bg-slate-50 border border-slate-100 p-4 rounded-2xl space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm">💡</span>
+                        <h4 class="text-xs font-bold text-slate-700">معلومة إكلينيكية سريعة</h4>
+                    </div>
+                    <p id="panel-info" class="text-xs text-slate-600 leading-relaxed">
+                        تتبع ترتيب Order of Draw بدقة يمنع انتقال التلوث المتبادل للمواد المضافة بين الأنابيب أثناء عملية سحب الدم.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Footer Badge inside Panel -->
+            <div class="border-t border-slate-100 pt-4 mt-6">
+                <div class="flex items-center justify-between text-xs text-slate-500">
+                    <span>حالة المحاكاة:</span>
+                    <span class="font-bold text-emerald-600">نشط وجاهز ✓</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript Application Engine -->
+    <script>
+        // Global State & User XP
+        let userXP = 120;
+
+        // Custom Mouse Glove Cursor with GSAP quickTo
+        const cursor = document.getElementById('custom-cursor');
+        const xTo = gsap.quickTo(cursor, "x", { duration: 0.1, ease: "power3" });
+        const yTo = gsap.quickTo(cursor, "y", { duration: 0.1, ease: "power3" });
+
+        window.addEventListener("mousemove", e => {
+            xTo(e.clientX);
+            yTo(e.clientY);
+        });
+
+        // Tube Database (12 Standard Order of Draw Tubes)
+        const TUBE_DATABASE = [
+            { id: 'yellow', name: 'أصفر (SPS)', color: '#F59E0B', additive: 'Sodium Polyanethol Sulfonate', tests: ['زراعة الدم (Blood Culture)'], why: 'يحفظ البكتيريا حية ويمنع المتممة من قضائها.' },
+            { id: 'light_blue', name: 'أزرق فاتح (Citrate)', color: '#3B82F6', additive: 'Sodium Citrate (3.2%)', tests: ['تخثر الدم PT/INR, APTT'], why: 'يرتبط بالكالسيوم بشكل عكسي للحفاظ على عوامل التجلط.' },
+            { id: 'red', name: 'أحمر (Plain)', color: '#EF4444', additive: 'None / Clot Activator', tests: ['أمصال، هرمونات، بنك الدم'], why: 'يسمح بتجلط الدم للحصول على مصل نقي.' },
+            { id: 'gold', name: 'ذهبي (SST Gel)', color: '#D97706', additive: 'SST Gel + Clot Activator', tests: ['كيمياء شاملة، وظائف كبد وكلى'], why: 'الجل يفصل المصل لمنع استهلاك الجلوكوز.' },
+            { id: 'green', name: 'أخضر (Heparin)', color: '#10B981', additive: 'Lithium Heparin', tests: ['غازات الدم ABG، أملاح الدم'], why: 'يمنع التخثر فوراً للاختبارات السريعة.' },
+            { id: 'lavender', name: 'بنفسجي (EDTA)', color: '#8B5CF6', additive: 'K2EDTA', tests: ['عد دم كامل CBC، HbA1c'], why: 'يحافظ على مورفولوجيا وحجم خلايا الدم.' },
+            { id: 'white', name: 'أبيض (PPT Gel)', color: '#F3F4F6', additive: 'K2EDTA + Gel', tests: ['فحوصات الجينات PCR'], why: 'يحمي الأحماض النووية من التحلل.' },
+            { id: 'grey', name: 'رمادي (Fluoride)', color: '#6B7280', additive: 'Sodium Fluoride', tests: ['سكر الدم الدقيق (Glucose)'], why: 'يوقف الإنزيمات المسؤولة عن تحلل الجلوكوز.' },
+            { id: 'pink', name: 'وردي (Blood Bank)', color: '#EC4899', additive: 'K2EDTA', tests: ['مطابقة الدم Cross-matching'], why: 'ملصق أمان مضاعف لبنك الدم.' },
+            { id: 'royal_blue', name: 'أزرق ملكي (Trace)', color: '#1E3A8A', additive: 'Lead-free Additive', tests: ['المعادن النادرة (Zinc, Copper)'], why: 'خالٍ تماماً من شوائب المعادن.' },
+            { id: 'tan', name: 'بني فاتح (Lead)', color: '#9A3412', additive: 'K2EDTA', tests: ['قياس نسبة الرصاص'], why: 'معقم خصيصاً لفحوصات الرصاص.' },
+            { id: 'dark_blue', name: 'أزرق داكن (Vitamins)', color: '#0F172A', additive: 'Sodium Heparin', tests: ['فيتامينات الدم (B1, B6)'], why: 'يحمي الفيتامينات من التفكك الضوئي.' }
+        ];
+
+        // Render Tube Wall
+        function renderTubeWall() {
+            const grid = document.getElementById('tubes-grid');
+            grid.innerHTML = '';
+            TUBE_DATABASE.forEach((tube, index) => {
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border border-slate-200 bg-white hover:border-blue-400 cursor-pointer flex flex-col items-center transition shadow-sm`;
+                card.onclick = () => selectTube(tube);
+                card.innerHTML = `
+                    <svg width="40" height="110" viewBox="0 0 45 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="10" y="5" width="25" height="22" rx="4" fill="${tube.color}" stroke="#1e293b" stroke-width="2"/>
+                        <rect x="8" y="27" width="29" height="98" rx="4" fill="white" fill-opacity="0.7" stroke="#94a3b8" stroke-width="2"/>
+                        <rect x="10" y="50" width="25" height="72" rx="2" fill="${tube.color}" fill-opacity="0.85"/>
+                    </svg>
+                    <span class="text-[10px] font-bold text-slate-400 mt-1">#${index + 1}</span>
+                    <span class="text-[11px] font-bold text-slate-700 text-center mt-0.5">${tube.name}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Select Tube and Update Right Side Panel
+        function selectTube(tube) {
+            document.getElementById('panel-title').innerText = tube.name;
+            document.getElementById('panel-desc').innerText = `المادة الحافظة: ${tube.additive}\n\nالفحوصات المرتبطة: ${tube.tests.join(', ')}`;
+            document.getElementById('panel-info').innerText = tube.why;
+            userXP += 5;
+            document.getElementById('xp-counter').innerText = `${userXP} XP`;
+        }
+
+        // Switch Sections via HUD Navigation
+        function switchSection(targetId) {
+            document.querySelectorAll('.lab-section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(`section-${targetId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'shadow-sm');
+                if(btn.getAttribute('data-target') === targetId) {
+                    btn.classList.add('bg-white', 'shadow-sm');
+                }
+            });
+
+            // Update Side Panel context based on section
+            const titles = {
+                tubes: "جدار الأنابيب الطبية",
+                cbc: "تحليل الدم الشامل CBC",
+                bloodgroup: "فصيلة الدم ABO & Rh",
+                culture: "زراعة البكتيريا المتطورة",
+                urine: "تحليل البول الشامل",
+                glucose: "قياس سكر الدم السريع",
+                microscope: "المجهر التشخيصي",
+                cases: "الحالات السريرية",
+                library: "المكتبة التعليمية"
+            };
+            document.getElementById('panel-title').innerText = titles[targetId];
+            document.getElementById('panel-desc').innerText = "تفاعل مع الأدوات في لوحة العمل اليسرى لإتمام الخطوات المخبرية بدقة.";
+        }
+
+        // CBC Analyzer Drop Interaction
+        const dropAnalyzer = document.getElementById('drop-analyzer');
+        const dragLavender = document.getElementById('drag-lavender-tube');
+
+        dragLavender.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', 'lavender');
+        });
+
+        dropAnalyzer.addEventListener('dragover', (e) => e.preventDefault());
+        dropAnalyzer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const data = e.dataTransfer.getData('text/plain');
+            if (data === 'lavender') {
+                dropAnalyzer.innerHTML = `<span class="text-xs font-bold text-emerald-600">تم فحص عينة CBC بنجاح! ✓</span>`;
+                document.getElementById('panel-desc').innerText = "نتائج CBC:\nWBC: 7.2 K/uL\nRBC: 5.1 M/uL\nHb: 14.2 g/dL\nPlatelets: 250 K/uL";
+                userXP += 30;
+                document.getElementById('xp-counter').innerText = `${userXP} XP`;
+            }
+        });
+
+        // Blood Group Reagents Drop
+        function dropReagent(type) {
+            const circle = document.getElementById(`circle-${type.toLowerCase()}`);
+            circle.style.backgroundColor = '#ef4444';
+            circle.innerHTML = `<span class="text-xs font-bold text-white">تكتل (+)</span>`;
+            userXP += 10;
+            document.getElementById('xp-counter').innerText = `${userXP} XP`;
+            document.getElementById('panel-desc').innerText = `تم إسقاط قطرة Anti-${type} وحدث تفاعل تكتل إيجابي (Agglutination).`;
+        }
+
+        // Bunsen Burner Flame Toggle
+        let burnerOn = false;
+        function toggleBunsenBurner() {
+            burnerOn = !burnerOn;
+            const flame = document.getElementById('flame-path');
+            const status = document.getElementById('burner-status');
+            if (burnerOn) {
+                flame.setAttribute('fill', '#f97316');
+                status.innerText = "موقد بنزن (مشتعل 🔥 - Loop معقم)";
+                gsap.to(flame, { scale: 1.05, repeat: -1, yoyo: true, duration: 0.3 });
+            } else {
+                flame.setAttribute('fill', '#cbd5e1');
+                status.innerText = "موقد بنزن (مطفأ)";
+                gsap.killTweensOf(flame);
+            }
+        }
+
+        // Petri Dish Streaking
+        function performStreaking() {
+            if (!burnerOn) {
+                alert("تحذير: يجب تعقيم اللوب على موقد بنزن أولاً لتفادي تلوث العينة!");
+                return;
+            }
+            document.getElementById('agar-colonies').classList.remove('opacity-0');
+            document.getElementById('panel-desc').innerText = "تم تخطيط الآغار بنجاح. نمت مستعمرات بكتيرية نقية بعد 24 ساعة الحضانة.";
+            userXP += 40;
+            document.getElementById('xp-counter').innerText = `${userXP} XP`;
+        }
+
+        // Urine Dipstick Dipping
+        function dipUrineStrip() {
+            document.getElementById('pad-1').setAttribute('fill', '#3b82f6');
+            document.getElementById('pad-2').setAttribute('fill', '#10b981');
+            document.getElementById('pad-3').setAttribute('fill', '#ef4444');
+            document.getElementById('panel-desc').innerText = "نتائج شريط البول:\npH: 6.0\nProtein: Negative\nBlood: Trace (أثر بسيط)";
+            userXP += 25;
+            document.getElementById('xp-counter').innerText = `${userXP} XP`;
+        }
+
+        // Glucose Test Run
+        function runGlucoseTest() {
+            document.getElementById('glucometer-screen').innerText = "112 mg/dL";
+            document.getElementById('panel-desc').innerText = "قراءة سكر الدم الصائم: 112 mg/dL (ضمن المعدل الطبيعي المقبول).";
+            userXP += 20;
+            document.getElementById('xp-counter').innerText = `${userXP} XP`;
+        }
+
+        // Microscope Slide Loader
+        function loadSlide(type) {
+            const tag = document.getElementById('slide-name-tag');
+            if(type === 'normal') tag.innerText = "عينة دم طبيعية (Normal)";
+            if(type === 'iron') tag.innerText = "أنيميا نقص الحديد (Microcytic Hypochromic)";
+            if(type === 'sickle') tag.innerText = "فقر الدم المنجلي (Sickle Cells)";
+            document.getElementById('panel-desc').innerText = `تم تحميل شريحة ${tag.innerText} وفحصها تحت عدسة 40x.`;
+        }
+
+        // Clinical Case Solver
+        function solveClinicalCase() {
+            alert("إجابة صحيحة! تم تشخيص الحالة كأنيميا نقص الحديد.");
+            userXP += 100;
+            document.getElementById('xp-counter').innerText = `${userXP} XP`;
+            document.getElementById('panel-desc').innerText = "أحسنت! تم إكمال الحالة السريرية بنجاح وتم منحك 100 نقطة XP.";
+        }
+
+        // Reset Progress
+        function resetLabProgress() {
+            userXP = 120;
+            document.getElementById('xp-counter').innerText = `${userXP} XP`;
+            alert("تم إعادة ضبط التقدم بنجاح.");
+        }
+
+        // Initialize on Load
+        window.onload = () => {
+            renderTubeWall();
+            gsap.from("main > section", { opacity: 0, y: 15, stagger: 0.1, duration: 0.5 });
+        };
+    </script>
+</body>
+</html>
